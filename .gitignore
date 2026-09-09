@@ -18,3 +18,7 @@ frontend/.env*.local
 # OS files
 .DS_Store
 Thumbs.db
+
+# External skills
+agent-skills/
+Anthropic-Cybersecurity-Skills/

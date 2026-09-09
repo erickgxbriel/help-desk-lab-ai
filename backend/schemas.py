@@ -17,11 +17,12 @@ class SettingsSchema(SettingsBase):
         from_attributes = True
 
 class MessageBase(BaseModel):
-    sender: str  # AGENT or USER
+    sender: str = "AGENT"  # AGENT or USER
     content: str
 
-class MessageCreate(MessageBase):
-    pass
+class MessageCreate(BaseModel):
+    content: str
+    sender: str = "AGENT"
 
 class MessageSchema(MessageBase):
     id: int

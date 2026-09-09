@@ -7,15 +7,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from openai import OpenAI
 from database import engine, Base, SessionLocal, get_db
 from models import Settings, Ticket, Message
 from schemas import (
     SettingsSchema, SettingsBase, TicketSchema, TicketDetailSchema,
     TicketCreateSchema, TicketResolveSchema, EvaluationResponse,
-    DashboardStats, MessageSchema
+    DashboardStats, MessageSchema, MessageCreate
 )
 from seed import seed_db, INITIAL_TICKETS
-from ai import generate_user_response
+from ai import generate_user_response, get_llm_client
 from evaluator import evaluate_ticket
 
 # Predefined templates for random ticket generation when AI is offline/mock
@@ -251,9 +252,9 @@ def generate_ticket(payload: TicketCreateSchema, db: Session = Depends(get_db)):
         ticket_id = "HD-1011"
 
     # AI generation if API Key available and not mock
-    if settings and settings.provider != "mock" and settings.api_key:
+    if settings and settings.provider != "mock" and (settings.provider == "ollama" or settings.api_key):
         try:
-            client = OpenAI(api_key=settings.api_key)
+            client, model_name = get_llm_client(settings)
             prompt = f"""Gere um caso de simulação de suporte de TI realista.
 Categoria: {category}
 Nível de dificuldade: {difficulty}
@@ -270,12 +271,20 @@ Retorne APENAS um JSON (sem caixas de código ```json e sem outro texto) com a s
 }}
 """
             response = client.chat.completions.create(
-                model=settings.model,
+                model=model_name,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.8,
                 response_format={"type": "json_object"}
             )
-            data = json.loads(response.choices[0].message.content.strip())
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+
+            data = json.loads(content.strip())
             
             new_ticket = Ticket(
                 id=ticket_id,

@@ -4,6 +4,8 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, TicketDetail } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { TICKET_KNOWLEDGE } from "@/lib/ticketKnowledge";
 
 interface EvaluationPageProps {
   params: Promise<{ id: string }>;
@@ -18,6 +20,9 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [restarting, setRestarting] = useState(false);
 
+  const { t, language } = useI18n();
+  const lang = language as "pt" | "en" | "es";
+
   useEffect(() => {
     api.getTicket(ticketId)
       .then((data) => {
@@ -26,13 +31,13 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
       })
       .catch((err) => {
         console.error(err);
-        setError("Não foi possível carregar a avaliação deste chamado.");
+        setError("Não foi possível carregar a avaliação deste incidente.");
         setLoading(false);
       });
   }, [ticketId]);
 
   const handleRestart = () => {
-    if (!confirm("Deseja reiniciar este chamado? Isso apagará a conversa anterior e a nota de avaliação, permitindo que você tente resolver o caso novamente.")) {
+    if (!confirm("Deseja reiniciar este chamado? O histórico e nota serão limpos para uma nova tentativa.")) {
       return;
     }
     setRestarting(true);
@@ -49,27 +54,27 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-400 text-sm">Carregando relatório de avaliação...</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-slate-400 text-xs">{t("eval_loading")}</p>
       </div>
     );
   }
 
   if (error || !ticket || ticket.status !== "SOLVED") {
     return (
-      <div className="glass-panel p-6 border-red-900/50 bg-red-950/20 max-w-2xl mx-auto mt-10">
-        <h2 className="text-red-400 font-bold text-lg mb-2">Relatório Indisponível</h2>
-        <p className="text-slate-300 text-sm mb-4">
-          {error || "Este chamado ainda não foi finalizado e avaliado ou não foi encontrado."}
+      <div className="p-4 border border-rose-900/60 bg-rose-950/20 max-w-xl mx-auto mt-8 rounded">
+        <h2 className="text-rose-400 font-semibold text-xs mb-1">{t("eval_unavailable")}</h2>
+        <p className="text-slate-300 text-xs mb-3">
+          {error || t("eval_not_finished")}
         </p>
-        <div className="flex space-x-3">
-          <Link href="/" className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition">
-            Voltar ao Dashboard
+        <div className="flex space-x-2">
+          <Link href="/" className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 transition">
+            {t("eval_back_queue")}
           </Link>
           {ticket && ticket.status === "OPEN" && (
-            <Link href={`/tickets/${ticketId}`} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition">
-              Atender Chamado
+            <Link href={`/tickets/${ticketId}`} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded transition">
+              {t("eval_attend_incident")}
             </Link>
           )}
         </div>
@@ -77,12 +82,11 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
     );
   }
 
-  // Parse feedback JSON from ticket
   let feedbackData = {
-    strengths: ["Polidez no atendimento"],
-    improvements: ["Melhorar identificação de causa raiz"],
+    strengths: ["Polidez e cordialidade no atendimento"],
+    improvements: ["Identificar causa raiz antes de propor ações"],
     diagnosis_probable: "Nenhum diagnóstico registrado",
-    feedback_text: "Avaliação efetuada."
+    feedback_text: "Avaliação efetuada pelo auditor."
   };
 
   if (ticket.feedback) {
@@ -94,97 +98,84 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
   }
 
   const score = ticket.score ?? 0;
-  
-  // Color classes based on score
-  const getScoreColors = (val: number) => {
-    if (val >= 80) return { text: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30", fill: "#10b981" };
-    if (val >= 60) return { text: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30", fill: "#f59e0b" };
-    return { text: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/30", fill: "#ef4444" };
-  };
-  const colors = getScoreColors(score);
+  const isApproved = score >= 70;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
-      {/* Back button */}
-      <div>
-        <Link 
-          href="/" 
-          className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1.5"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>Voltar ao Dashboard</span>
-        </Link>
-      </div>
-
-      {/* Main Header / Score overview */}
-      <div className="glass-panel p-8 bg-gradient-to-br from-slate-900 to-slate-950 flex flex-col md:flex-row items-center gap-8">
-        {/* Visual score circle */}
-        <div className="relative w-36 h-36 shrink-0 flex items-center justify-center rounded-full bg-slate-950 border border-slate-800 shadow-inner">
-          <svg className="absolute w-32 h-32 transform -rotate-90">
-            <circle
-              cx="64"
-              cy="64"
-              r="54"
-              stroke="rgba(255, 255, 255, 0.03)"
-              strokeWidth="8"
-              fill="transparent"
-            />
-            <circle
-              cx="64"
-              cy="64"
-              r="54"
-              stroke={colors.fill}
-              strokeWidth="8"
-              fill="transparent"
-              strokeDasharray={2 * Math.PI * 54}
-              strokeDashoffset={2 * Math.PI * 54 * (1 - score / 100)}
-              className="transition-all duration-1000 ease-out"
-            />
-          </svg>
-          <div className="text-center z-10">
-            <span className="text-4xl font-extrabold text-white tracking-tighter">{score}</span>
-            <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider mt-0.5">Pontos</span>
+    <div className="max-w-4xl mx-auto space-y-5">
+      {/* Top Header / Breadcrumb */}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <div>
+          <div className="flex items-center space-x-2 text-xs text-slate-500 mb-1">
+            <Link href="/" className="hover:text-slate-300">{t("nav_incidents")}</Link>
+            <span>/</span>
+            <span className="font-mono text-blue-400">{ticket.id}</span>
+            <span>/</span>
+            <span className="text-slate-400">{t("eval_audit_qa")}</span>
           </div>
+          <h1 className="text-lg font-semibold text-slate-100">{t("eval_report_title")}</h1>
         </div>
 
-        {/* Audit Details */}
-        <div className="flex-1 space-y-3 text-center md:text-left">
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-            <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
-              {ticket.id}
-            </span>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-indigo-400">
-              {ticket.category}
-            </span>
-            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${colors.bg} ${colors.text} border ${colors.border}`}>
-              Avaliação: {score >= 80 ? "Aprovado" : score >= 60 ? "Atenção" : "Abaixo da Média"}
-            </span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-100 leading-tight">
-            Relatório de Avaliação do Chamado
-          </h1>
-          <p className="text-xs text-slate-400">
-            Cenário: <b>{ticket.title}</b> | Dificuldade: <b>{ticket.difficulty}</b> | Usuário: <b>{ticket.user_profile}</b>
-          </p>
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={handleRestart}
+            disabled={restarting}
+            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs rounded border border-slate-800 transition"
+          >
+            {restarting ? t("eval_restarting") : t("eval_redo_btn")}
+          </button>
+          <Link
+            href="/"
+            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded transition shadow-sm"
+          >
+            {t("eval_finish_btn")}
+          </Link>
         </div>
       </div>
 
-      {/* Strengths and Weaknesses Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Main Score KPI Overview */}
+      <div className="bg-[#0f141f] border border-slate-800/80 rounded p-5 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex items-center space-x-4">
+          <div className={`w-16 h-16 rounded border flex flex-col items-center justify-center ${
+            isApproved 
+              ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-400" 
+              : "bg-rose-950/30 border-rose-500/30 text-rose-400"
+          }`}>
+            <span className="text-2xl font-bold font-mono leading-none">{score}</span>
+            <span className="text-[9px] uppercase font-semibold tracking-wider mt-0.5">/ 100 pts</span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                isApproved 
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                  : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+              }`}>
+                {isApproved ? t("eval_approved") : t("eval_needs_review")}
+              </span>
+              <span className="text-xs text-slate-400 font-mono">ID: {ticket.id}</span>
+            </div>
+            <h2 className="text-sm font-semibold text-slate-100">{TICKET_KNOWLEDGE[ticket.id]?.title?.[lang] || ticket.title}</h2>
+            <p className="text-[11px] text-slate-500">
+              {t("dash_table_category")}: <b>{TICKET_KNOWLEDGE[ticket.id]?.category?.[lang] || ticket.category}</b> | {t("eval_complexity")}: <b>{ticket.difficulty}</b> | {t("eval_requester")}: <b>{ticket.user_profile}</b>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Strengths and Improvements Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Strengths */}
-        <div className="glass-panel p-6 border-emerald-500/10 bg-emerald-500/2">
-          <h3 className="font-bold text-sm text-emerald-400 uppercase tracking-wider mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Pontos Fortes
+        <div className="bg-[#0f141f] border border-slate-800/80 rounded p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>{t("eval_strengths")}</span>
           </h3>
-          <ul className="space-y-2.5">
+          <ul className="space-y-2 text-xs text-slate-300">
             {feedbackData.strengths.map((str, idx) => (
-              <li key={idx} className="text-xs text-slate-300 flex items-start space-x-2">
-                <span className="text-emerald-500 font-bold">•</span>
+              <li key={idx} className="flex items-start space-x-2">
+                <span className="text-emerald-400 font-bold">•</span>
                 <span>{str}</span>
               </li>
             ))}
@@ -192,17 +183,15 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
         </div>
 
         {/* Improvements */}
-        <div className="glass-panel p-6 border-rose-500/10 bg-rose-500/2">
-          <h3 className="font-bold text-sm text-rose-400 uppercase tracking-wider mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Pontos de Melhoria
+        <div className="bg-[#0f141f] border border-slate-800/80 rounded p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-rose-400 uppercase tracking-wider flex items-center space-x-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>{t("eval_improvements")}</span>
           </h3>
-          <ul className="space-y-2.5">
+          <ul className="space-y-2 text-xs text-slate-300">
             {feedbackData.improvements.map((imp, idx) => (
-              <li key={idx} className="text-xs text-slate-300 flex items-start space-x-2">
-                <span className="text-rose-500 font-bold">•</span>
+              <li key={idx} className="flex items-start space-x-2">
+                <span className="text-rose-400 font-bold">•</span>
                 <span>{imp}</span>
               </li>
             ))}
@@ -210,59 +199,40 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
         </div>
       </div>
 
-      {/* Comparative cards: expected vs diagnostic */}
-      <div className="glass-panel p-6 space-y-6">
-        <h3 className="font-bold text-sm text-slate-400 uppercase tracking-wider border-b border-slate-900 pb-3">
-          Análise de Resolução Técnica
+      {/* Solution Comparison & Detailed Feedback */}
+      <div className="bg-[#0f141f] border border-slate-800/80 rounded p-5 space-y-4">
+        <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider border-b border-slate-800/80 pb-2">
+          {t("eval_technical_analysis")}
         </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-900/40 p-4.5 rounded-lg border border-slate-900 space-y-2">
-            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-              Diagnóstico Proposto por Você
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="p-3 bg-slate-950/50 rounded border border-slate-800/80 space-y-1.5">
+            <span className="text-[10px] uppercase font-semibold text-slate-500 block">
+              {t("eval_submitted_diagnosis")}
             </span>
-            <p className="text-xs text-slate-300 leading-relaxed italic">
+            <p className="text-slate-300 leading-relaxed italic">
               "{feedbackData.diagnosis_probable}"
             </p>
           </div>
 
-          <div className="bg-indigo-950/10 p-4.5 rounded-lg border border-indigo-900/20 space-y-2">
-            <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">
-              Solução Esperada (Gabarito)
+          <div className="p-3 bg-blue-950/20 rounded border border-blue-900/30 space-y-1.5">
+            <span className="text-[10px] uppercase font-semibold text-blue-400 block">
+              {t("eval_expected_solution")}
             </span>
-            <p className="text-xs text-indigo-300 leading-relaxed">
+            <p className="text-blue-200 leading-relaxed">
               {ticket.expected_solution}
             </p>
           </div>
         </div>
 
-        {/* Detailed audit text */}
-        <div className="bg-slate-900/20 p-5 rounded-lg border border-slate-900/50 space-y-2">
-          <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">
-            Feedback Detalhado do Auditor de Qualidade
+        <div className="p-3.5 bg-slate-950/30 rounded border border-slate-800/60 space-y-1 text-xs">
+          <span className="text-[10px] uppercase font-semibold text-slate-400 block">
+            {t("eval_qa_opinion")}
           </span>
-          <p className="text-xs text-slate-300 leading-relaxed">
+          <p className="text-slate-300 leading-relaxed">
             {feedbackData.feedback_text}
           </p>
         </div>
-      </div>
-
-      {/* Bottom buttons panel */}
-      <div className="flex flex-wrap gap-4 justify-end">
-        <button
-          type="button"
-          onClick={handleRestart}
-          disabled={restarting}
-          className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-lg border border-slate-800 hover:border-slate-600 transition"
-        >
-          {restarting ? "Reiniciando..." : "Refazer Atendimento"}
-        </button>
-        <Link
-          href="/"
-          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-lg shadow-indigo-600/10 transition"
-        >
-          Concluir e Ir para Dashboard
-        </Link>
       </div>
     </div>
   );

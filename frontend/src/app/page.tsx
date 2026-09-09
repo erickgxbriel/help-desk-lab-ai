@@ -3,11 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, DashboardStats } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { TICKET_KNOWLEDGE } from "@/lib/ticketKnowledge";
 
 export default function Dashboard() {
+  const { t, language } = useI18n();
+  const lang = language as "pt" | "en" | "es";
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"ALL" | "OPEN" | "SOLVED">("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     api.getStats()
@@ -17,212 +24,344 @@ export default function Dashboard() {
       })
       .catch((err) => {
         console.error(err);
-        setError("Não foi possível carregar as estatísticas. Certifique-se de que o backend está rodando na porta 8000.");
+        setError("Não foi possível conectar ao servidor de chamados (backend:8000).");
         setLoading(false);
       });
   }, []);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-400 text-sm">Carregando painel do laboratório...</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-slate-400 text-xs">{t("dash_loading")}</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="glass-panel p-6 border-red-900/50 bg-red-950/20 max-w-2xl mx-auto mt-10">
-        <h2 className="text-red-400 font-bold text-lg mb-2 flex items-center">
-          <svg className="w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="p-4 border border-rose-900/60 bg-rose-950/20 max-w-xl mx-auto mt-8 rounded">
+        <div className="flex items-center space-x-2 text-rose-400 font-semibold text-xs mb-1">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          Erro de Conexão
-        </h2>
-        <p className="text-slate-300 text-sm mb-4">{error}</p>
+          <span>{t("dash_error_title")}</span>
+        </div>
+        <p className="text-slate-300 text-xs mb-3">{t("dash_error_conn")}</p>
         <button 
           onClick={() => window.location.reload()} 
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition"
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 transition"
         >
-          Tentar Novamente
+          {t("dash_btn_reconnect")}
         </button>
       </div>
     );
   }
 
-  const recentTickets = stats?.recent_tickets || [];
+  const allTickets = stats?.recent_tickets || [];
+  
+  // Extract unique categories from tickets
+  const availableCategories = Array.from(new Set(allTickets.map((t) => t.category)));
+
+  // Filter tickets by Status, Category and Search
+  const filteredTickets = allTickets.filter((ticket) => {
+    // 1. Status Filter
+    if (filter === "OPEN" && ticket.status === "RESOLVED") return false;
+    if (filter === "SOLVED" && ticket.status !== "RESOLVED") return false;
+
+    // 2. Category Filter
+    if (categoryFilter !== "ALL" && ticket.category !== categoryFilter) return false;
+
+    // 3. Search Query (matches ID, title, description, category, user profile)
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      const matchId = ticket.id.toLowerCase().includes(q);
+      const matchTitle = ticket.title.toLowerCase().includes(q);
+      const matchDesc = ticket.description.toLowerCase().includes(q);
+      const matchCategory = ticket.category.toLowerCase().includes(q);
+      const matchProfile = ticket.user_profile.toLowerCase().includes(q);
+      if (!matchId && !matchTitle && !matchDesc && !matchCategory && !matchProfile) return false;
+    }
+
+    return true;
+  });
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Title */}
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white">Dashboard</h1>
-        <p className="text-slate-400 mt-1">Acompanhe seu progresso de suporte e treine com novos chamados.</p>
-      </div>
-
-      {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="glass-panel p-6 flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 top-0 p-4 opacity-10 text-indigo-400 group-hover:scale-110 transition-transform">
-            <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total de Chamados</span>
-          <span className="text-4xl font-extrabold text-white mt-4">{stats?.total_tickets}</span>
-          <span className="text-[10px] text-slate-500 mt-2">Registrados na base local</span>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Title & Action Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-800/80">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-100">{t("dash_title")}</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{t("dash_subtitle")}</p>
         </div>
-
-        <div className="glass-panel p-6 flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 top-0 p-4 opacity-10 text-amber-500 group-hover:scale-110 transition-transform">
-            <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <div className="flex items-center space-x-2.5">
+          <Link
+            href="/academy"
+            className="px-3.5 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 text-xs font-semibold rounded transition flex items-center space-x-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-          </div>
-          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Em Aberto</span>
-          <span className="text-4xl font-extrabold text-amber-400 mt-4">{stats?.open_tickets}</span>
-          <span className="text-[10px] text-slate-500 mt-2">Aguardando atendimento</span>
-        </div>
-
-        <div className="glass-panel p-6 flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 top-0 p-4 opacity-10 text-emerald-500 group-hover:scale-110 transition-transform">
-            <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <span>{t("dash_academy_btn")}</span>
+          </Link>
+          <Link
+            href="/tickets/new"
+            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded shadow-sm transition flex items-center space-x-1.5"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-          </div>
-          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Concluídos</span>
-          <span className="text-4xl font-extrabold text-emerald-400 mt-4">{stats?.completed_tickets}</span>
-          <span className="text-[10px] text-slate-500 mt-2">Avaliados e encerrados</span>
-        </div>
-
-        <div className="glass-panel p-6 flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 top-0 p-4 opacity-10 text-cyan-400 group-hover:scale-110 transition-transform">
-            <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Média Geral de Score</span>
-          <span className="text-4xl font-extrabold text-indigo-300 mt-4">
-            {stats?.avg_score !== undefined ? `${stats.avg_score}/100` : "0.0"}
-          </span>
-          <span className="text-[10px] text-slate-500 mt-2">Baseado nas avaliações</span>
+            <span>{t("dash_new_btn")}</span>
+          </Link>
         </div>
       </div>
 
-      {/* Main Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Recent tickets */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white">Chamados Recentes</h2>
-            <Link 
-              href="/tickets/new" 
-              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1"
-            >
-              <span>Criar Chamado</span>
+      {/* Corporate ITSM KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-panel p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t("dash_total_base")}</span>
+            <span className="p-1 rounded bg-slate-800/60 text-slate-400">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-            </Link>
+            </span>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-slate-100">{stats?.total_tickets}</span>
+            <span className="text-[10px] text-slate-500 block mt-0.5">{t("dash_total_sub")}</span>
+          </div>
+        </div>
+
+        <div className="glass-panel p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-400">{t("dash_open_title")}</span>
+            <span className="p-1 rounded bg-amber-500/10 text-amber-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-amber-400">{stats?.open_tickets}</span>
+            <span className="text-[10px] text-slate-500 block mt-0.5">{t("dash_open_sub")}</span>
+          </div>
+        </div>
+
+        <div className="glass-panel p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">{t("dash_completed_title")}</span>
+            <span className="p-1 rounded bg-emerald-500/10 text-emerald-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-emerald-400">{stats?.completed_tickets}</span>
+            <span className="text-[10px] text-slate-500 block mt-0.5">{t("dash_completed_sub")}</span>
+          </div>
+        </div>
+
+        <div className="glass-panel p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">{t("dash_score_title")}</span>
+            <span className="p-1 rounded bg-blue-500/10 text-blue-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </span>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-slate-100">
+              {stats?.avg_score !== undefined ? `${stats.avg_score}` : "0"}
+              <span className="text-xs text-slate-500 font-normal"> / 100</span>
+            </span>
+            <span className="text-[10px] text-slate-500 block mt-0.5">{t("dash_score_sub")}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Incident Queue Table */}
+      <div className="glass-panel overflow-hidden">
+        {/* Table Filter & Search Toolbar */}
+        <div className="px-4 py-3 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-950/40">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Pills */}
+            <div className="flex items-center space-x-1 bg-slate-900 p-0.5 rounded border border-slate-800">
+              <button
+                onClick={() => setFilter("ALL")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded transition ${
+                  filter === "ALL" 
+                    ? "bg-slate-800 text-white shadow-xs" 
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {t("dash_filter_all")} ({allTickets.length})
+              </button>
+              <button
+                onClick={() => setFilter("OPEN")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded transition ${
+                  filter === "OPEN" 
+                    ? "bg-slate-800 text-amber-400 shadow-xs" 
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {t("dash_filter_open")} ({stats?.open_tickets || 0})
+              </button>
+              <button
+                onClick={() => setFilter("SOLVED")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded transition ${
+                  filter === "SOLVED" 
+                    ? "bg-slate-800 text-emerald-400 shadow-xs" 
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {t("dash_filter_solved")} ({stats?.completed_tickets || 0})
+              </button>
+            </div>
+
+            {/* Category Dropdown Filter */}
+            <div className="flex items-center space-x-1.5">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition"
+              >
+                <option value="ALL">{t("dash_all_categories")} ({allTickets.length})</option>
+                {availableCategories.map((cat) => {
+                  const count = allTickets.filter(t => t.category === cat).length;
+                  const sampleTicket = allTickets.find(t => t.category === cat);
+                  const translatedCat = (sampleTicket && TICKET_KNOWLEDGE[sampleTicket.id]?.category?.[lang]) || cat;
+                  return (
+                    <option key={cat} value={cat}>
+                      {translatedCat} ({count})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
 
-          <div className="glass-panel divide-y divide-slate-800/60 overflow-hidden">
-            {recentTickets.length === 0 ? (
-              <div className="p-10 text-center text-slate-500">
-                Nenhum chamado criado ainda. Clique em "Novo Chamado" no menu ao lado para iniciar.
-              </div>
-            ) : (
-              recentTickets.map((ticket) => (
-                <div key={ticket.id} className="p-5 flex items-center justify-between hover:bg-slate-900/30 transition">
-                  <div className="space-y-1.5 pr-4 flex-1">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-xs font-bold text-indigo-400 tracking-wider uppercase bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
-                        {ticket.id}
-                      </span>
-                      <h3 className="font-bold text-sm text-slate-100 hover:text-indigo-400 transition">
-                        <Link href={`/tickets/${ticket.id}`}>{ticket.title}</Link>
-                      </h3>
-                      {ticket.status === "OPEN" ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                          Em Aberto
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                          Resolvido ({ticket.score} pts)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-400 line-clamp-1">{ticket.description}</p>
-                    <div className="flex items-center space-x-4 text-[10px] text-slate-500">
-                      <span>Categoria: <b>{ticket.category}</b></span>
-                      <span>Dificuldade: 
-                        <b className={`ml-1 ${
-                          ticket.difficulty === "N1" ? "text-emerald-400" :
-                          ticket.difficulty === "N2" ? "text-amber-400" : "text-rose-400"
-                        }`}>{ticket.difficulty}</b>
-                      </span>
-                      <span>Perfil: <b>{ticket.user_profile}</b></span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 shrink-0">
-                    <Link
-                      href={ticket.status === "OPEN" ? `/tickets/${ticket.id}` : `/tickets/${ticket.id}/evaluation`}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                        ticket.status === "OPEN" 
-                          ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10" 
-                          : "bg-slate-800 hover:bg-slate-700 text-slate-200"
-                      }`}
-                    >
-                      {ticket.status === "OPEN" ? "Atender" : "Ver Avaliação"}
-                    </Link>
-                  </div>
-                </div>
-              ))
+          {/* Quick Search */}
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("dash_search_placeholder")}
+              className="w-full sm:w-64 bg-slate-900 border border-slate-800 rounded px-3 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+              >
+                ✕
+              </button>
             )}
           </div>
         </div>
 
-        {/* Right Column: Training Info & Callout */}
-        <div className="space-y-6">
-          <div className="glass-panel p-6 bg-gradient-to-br from-indigo-950/20 to-slate-900/60 border-indigo-500/10">
-            <h3 className="font-bold text-base text-white mb-2 flex items-center">
-              <svg className="w-5 h-5 text-indigo-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Como Funciona o Lab?
-            </h3>
-            <ul className="text-xs text-slate-300 space-y-3 list-disc pl-4 mt-3">
-              <li>
-                <b>1. Escolha o Chamado:</b> Gere um ticket customizado escolhendo a dificuldade e o perfil de atendimento.
-              </li>
-              <li>
-                <b>2. Investigue o Caso:</b> Faça perguntas no chat. A IA responderá como o cliente final, sem saber a resposta técnica de cabeça.
-              </li>
-              <li>
-                <b>3. Resolva o Ticket:</b> Proponha a solução. Quando achar que resolveu, clique em "Finalizar" e envie seu diagnóstico.
-              </li>
-              <li>
-                <b>4. Receba Nota:</b> Nosso auditor de qualidade avaliará sua clareza, velocidade, postura e assertividade técnica de 0 a 100.
-              </li>
-            </ul>
-            <div className="mt-6">
-              <Link
-                href="/tickets/new"
-                className="w-full text-center block px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-lg shadow-indigo-600/20 transition"
-              >
-                Iniciar Novo Treinamento
-              </Link>
-            </div>
-          </div>
-
-          <div className="glass-panel p-6 bg-slate-950/50">
-            <h4 className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3">Dica do Especialista</h4>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              "Chamados de nível <b>DESAFIO</b> contêm sintomas falsos e usuários que mentem ou omitem fatos. 
-              Sempre verifique detalhes físicos simples primeiro, como cabos e conexões locais, antes de sugerir comandos complexos de rede."
-            </p>
-          </div>
+        {/* Dense Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-800/80 bg-slate-950/40 text-slate-400 font-medium">
+                <th className="py-2.5 px-4">{t("dash_table_id")}</th>
+                <th className="py-2.5 px-4">{t("dash_table_category")}</th>
+                <th className="py-2.5 px-4">{t("dash_table_priority")}</th>
+                <th className="py-2.5 px-4">{t("dash_table_level")}</th>
+                <th className="py-2.5 px-4">{t("dash_table_profile")}</th>
+                <th className="py-2.5 px-4">{t("dash_table_status")}</th>
+                <th className="py-2.5 px-4 text-right">{t("dash_table_action")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {filteredTickets.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-500">
+                    {t("dash_no_tickets")}
+                  </td>
+                </tr>
+              ) : (
+                filteredTickets.map((ticket) => (
+                  <tr key={ticket.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3 px-4 max-w-xs">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-blue-400 text-xs shrink-0">{ticket.id}</span>
+                        <Link 
+                          href={`/tickets/${ticket.id}`} 
+                          className="font-medium text-slate-200 hover:text-blue-400 transition-colors truncate"
+                        >
+                          {TICKET_KNOWLEDGE[ticket.id]?.title?.[lang] || ticket.title}
+                        </Link>
+                      </div>
+                      <span className="text-[11px] text-slate-500 block truncate mt-0.5">
+                        {ticket.description}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-300">
+                      {TICKET_KNOWLEDGE[ticket.id]?.category?.[lang] || ticket.category}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        ticket.priority === "CRITICAL" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" :
+                        ticket.priority === "HIGH" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                        ticket.priority === "MEDIUM" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                        "bg-slate-700/30 text-slate-400 border border-slate-700/50"
+                      }`}>
+                        {ticket.priority === "CRITICAL" ? t("dash_priority_critical") :
+                         ticket.priority === "HIGH" ? t("dash_priority_high") :
+                         ticket.priority === "MEDIUM" ? t("dash_priority_medium") :
+                         t("dash_priority_low")}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`font-semibold ${
+                        ticket.difficulty === "N1" ? "text-emerald-400" :
+                        ticket.difficulty === "N2" ? "text-amber-400" : "text-rose-400"
+                      }`}>
+                        {t("dash_level_prefix")} {ticket.difficulty}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-400 text-[11px]">
+                      {ticket.user_profile}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        ticket.status === "RESOLVED"
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          ticket.status === "RESOLVED" ? "bg-emerald-400" : "bg-amber-400"
+                        }`}></span>
+                        <span>{ticket.status === "RESOLVED" ? t("chat_status_resolved") : t("chat_status_open")}</span>
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {ticket.status === "RESOLVED" ? (
+                        <Link
+                          href={`/tickets/${ticket.id}/evaluation`}
+                          className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-blue-400 border border-blue-500/30 rounded text-[11px] font-semibold transition inline-block"
+                        >
+                          {t("dash_btn_view_eval")}
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/tickets/${ticket.id}`}
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-semibold transition inline-block shadow-xs"
+                        >
+                          {t("dash_btn_attend")}
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

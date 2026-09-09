@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 export default function NewTicket() {
   const router = useRouter();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,28 +26,28 @@ export default function NewTicket() {
   ];
 
   const difficulties = [
-    { value: "N1", label: "N1 - Fácil / Comum (Senhas, impressoras simples, VPN básica)" },
-    { value: "N2", label: "N2 - Intermediário (DNS, Active Directory, rede intermediária, permissões)" },
-    { value: "DESAFIO", label: "Desafio - Avançado (Sintomas vagos, pistas ocultas, usuários impacientes)" }
+    { value: "N1", label: t("new_ticket_diff_n1") },
+    { value: "N2", label: t("new_ticket_diff_n2") },
+    { value: "DESAFIO", label: t("new_ticket_diff_challenge") }
   ];
 
   const profiles = [
-    { value: "LEIGO", label: "Usuário Leigo (Sem jargões, gírias simples, confunde termos)" },
-    { value: "APRESSADO", label: "Usuário Apressado (Curto, impaciente, pressa de reuniões)" },
-    { value: "CONFUSO", label: "Usuário Confuso (Mistura ferramentas, explica tudo errado)" },
-    { value: "GESTOR", label: "Gestor (Focado em prazos, equipe parada, corporativo)" },
-    { value: "DIRETOR", label: "Diretor (Urgência máxima, curto, espera prioridade alta)" },
-    { value: "RH", label: "Recursos Humanos (Gosta de conversar, empático, não técnico)" },
-    { value: "FINANCEIRO", label: "Financeiro (Organizado, reclama de prazos de relatórios)" },
-    { value: "TECNICO", label: "Usuário Técnico (Tenta termos de TI, tentou reiniciar antes)" },
-    { value: "ANSIOSO", label: "Usuário Ansioso (Medo de perder dados, preocupado com cargo)" }
+    { value: "LEIGO", label: t("new_ticket_prof_leigo") },
+    { value: "APRESSADO", label: t("new_ticket_prof_apressado") },
+    { value: "CONFUSO", label: t("new_ticket_prof_confuso") },
+    { value: "GESTOR", label: t("new_ticket_prof_gestor") },
+    { value: "DIRETOR", label: t("new_ticket_prof_diretor") },
+    { value: "RH", label: t("new_ticket_prof_rh") },
+    { value: "FINANCEIRO", label: t("new_ticket_prof_financeiro") },
+    { value: "TECNICO", label: t("new_ticket_prof_tecnico") },
+    { value: "ANSIOSO", label: t("new_ticket_prof_ansioso") }
   ];
 
   const priorities = [
-    { value: "LOW", label: "Baixa (Baixo impacto local)" },
-    { value: "MEDIUM", label: "Média (Impacto setorial leve)" },
-    { value: "HIGH", label: "Alta (Bloqueia trabalho urgente)" },
-    { value: "CRITICAL", label: "Crítica (Parada geral / diretoria)" }
+    { value: "LOW", label: t("new_ticket_prio_low") },
+    { value: "MEDIUM", label: t("new_ticket_prio_med") },
+    { value: "HIGH", label: t("new_ticket_prio_high") },
+    { value: "CRITICAL", label: t("new_ticket_prio_crit") }
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -65,7 +68,7 @@ export default function NewTicket() {
       })
       .catch((err) => {
         console.error(err);
-        setError("Erro ao gerar o chamado de simulação. Verifique se o backend está online.");
+        setError(t("new_ticket_err_create"));
         setLoading(false);
       });
   };
@@ -80,44 +83,53 @@ export default function NewTicket() {
       })
       .catch((err) => {
         console.error(err);
-        setError("Erro ao gerar chamado rápido. Verifique a conexão com o backend.");
+        setError(t("new_ticket_err_random"));
         setLoading(false);
       });
   };
 
   return (
-    <div className="max-w-3xl space-y-8 animate-fade-in">
-      {/* Title */}
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white">Criar Novo Chamado</h1>
-        <p className="text-slate-400 mt-1">Configure o cenário e inicie um atendimento de suporte técnico interativo.</p>
+    <div className="max-w-4xl mx-auto space-y-5">
+      {/* Top Header / Breadcrumb */}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <div>
+          <div className="flex items-center space-x-2 text-xs text-slate-500 mb-1">
+            <Link href="/" className="hover:text-slate-300">{t("nav_incidents")}</Link>
+            <span>/</span>
+            <span className="text-slate-400">{t("new_ticket_breadcrumb")}</span>
+          </div>
+          <h1 className="text-lg font-semibold text-slate-100">{t("new_ticket_title")}</h1>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center space-x-3">
-          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="p-3 bg-rose-950/20 border border-rose-900/60 rounded text-rose-400 text-xs flex items-center space-x-2">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <span>{error}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Manual Config Form */}
-        <div className="md:col-span-2">
-          <form onSubmit={handleSubmit} className="glass-panel p-6 space-y-6">
-            <h2 className="text-lg font-bold text-white border-b border-slate-800 pb-3">Configuração Customizada</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Form Container */}
+        <div className="lg:col-span-2">
+          <form onSubmit={handleSubmit} className="bg-[#0f141f] border border-slate-800/80 rounded p-5 space-y-4">
+            <div className="border-b border-slate-800/80 pb-3">
+              <h2 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">{t("new_ticket_section_params")}</h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">{t("new_ticket_params_hint")}</p>
+            </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3.5 text-xs">
               {/* Category */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Categoria do Problema</label>
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">{t("new_ticket_category_label")}</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition"
+                  className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition"
                 >
-                  <option value="">Aleatória (Sorteada pelo sistema)</option>
+                  <option value="">{t("new_ticket_category_random")}</option>
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
@@ -125,14 +137,14 @@ export default function NewTicket() {
               </div>
 
               {/* Difficulty */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Nível de Dificuldade</label>
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">{t("new_ticket_difficulty_label")}</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition"
+                  className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition"
                 >
-                  <option value="">Aleatório (Sorteado pelo sistema)</option>
+                  <option value="">{t("new_ticket_difficulty_random")}</option>
                   {difficulties.map((diff) => (
                     <option key={diff.value} value={diff.value}>{diff.label}</option>
                   ))}
@@ -140,14 +152,14 @@ export default function NewTicket() {
               </div>
 
               {/* User Profile */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Perfil do Usuário Final (Simulação)</label>
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">{t("new_ticket_profile_label")}</label>
                 <select
                   value={userProfile}
                   onChange={(e) => setUserProfile(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition"
+                  className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition"
                 >
-                  <option value="">Aleatório (Sorteado pelo sistema)</option>
+                  <option value="">{t("new_ticket_profile_random")}</option>
                   {profiles.map((prof) => (
                     <option key={prof.value} value={prof.value}>{prof.label}</option>
                   ))}
@@ -155,14 +167,14 @@ export default function NewTicket() {
               </div>
 
               {/* Priority */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Prioridade de Atendimento</label>
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-300">{t("new_ticket_priority_label")}</label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition"
+                  className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition"
                 >
-                  <option value="">Aleatória (Sorteada pelo sistema)</option>
+                  <option value="">{t("new_ticket_priority_random")}</option>
                   {priorities.map((prio) => (
                     <option key={prio.value} value={prio.value}>{prio.label}</option>
                   ))}
@@ -170,58 +182,46 @@ export default function NewTicket() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-slate-800/60">
+            <div className="pt-3 border-t border-slate-800/80 flex items-center justify-end space-x-2">
+              <Link
+                href="/"
+                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded border border-slate-800 transition"
+              >
+                {t("new_ticket_cancel_btn")}
+              </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full md:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 text-white font-bold text-sm rounded-lg shadow-lg shadow-indigo-600/15 transition flex items-center justify-center space-x-2"
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-semibold text-xs rounded transition flex items-center space-x-1.5 shadow-sm"
               >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Gerando Laboratório...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Iniciar Laboratório</span>
-                  </>
-                )}
+                {loading ? t("new_ticket_creating_btn") : t("new_ticket_create_btn")}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Quick Launch Panel */}
-        <div className="space-y-6">
-          <div className="glass-panel p-6 bg-gradient-to-br from-indigo-950/20 to-slate-900/60 border-indigo-500/10 flex flex-col justify-between h-full min-h-[300px]">
+        {/* Quick Simulation Box */}
+        <div className="space-y-4">
+          <div className="bg-[#0f141f] border border-slate-800/80 rounded p-5 flex flex-col justify-between h-full">
             <div className="space-y-3">
-              <h2 className="text-lg font-bold text-white">Lançamento Rápido</h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Quer ir direto ao ponto sem ficar configurando? 
-                Clique abaixo e o sistema vai sortear um ticket aleatório entre os cenários de treinamento.
+              <h2 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">{t("new_ticket_quick_title")}</h2>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {t("new_ticket_quick_desc")}
               </p>
-              <div className="text-[11px] text-slate-500 border-t border-slate-800/80 pt-3 space-y-1">
-                <p>• Sorteia uma das 17 categorias de TI</p>
-                <p>• Embaralha perfis do usuário</p>
-                <p>• Dificuldade e prioridades sorteadas</p>
+              <div className="border-t border-slate-800/60 pt-3 text-[11px] text-slate-500 space-y-1">
+                <p>{t("new_ticket_quick_feat1")}</p>
+                <p>{t("new_ticket_quick_feat2")}</p>
+                <p>{t("new_ticket_quick_feat3")}</p>
               </div>
             </div>
-            
+
             <button
               type="button"
               onClick={handleQuickLaunch}
               disabled={loading}
-              className="mt-6 w-full py-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-200 font-bold text-sm rounded-lg transition flex items-center justify-center space-x-2"
+              className="mt-6 w-full py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 font-semibold text-xs rounded transition"
             >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <span>Sortear Chamado</span>
-              )}
+              {loading ? t("new_ticket_quick_generating") : t("new_ticket_quick_btn")}
             </button>
           </div>
         </div>

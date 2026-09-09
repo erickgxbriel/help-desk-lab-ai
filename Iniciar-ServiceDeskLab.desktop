@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Service Desk Lab
+Comment=Inicia o simulador de Service Desk N1/N2 com IA
+Exec=/home/gabriel/Downloads/ServiceDeskLab/start.sh
+Icon=utilities-terminal
+Terminal=true
+Categories=Development;Education;
+Path=/home/gabriel/Downloads/ServiceDeskLab
+StartupNotify=true

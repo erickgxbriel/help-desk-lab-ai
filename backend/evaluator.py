@@ -2,6 +2,7 @@ import json
 from openai import OpenAI
 from models import Settings, Ticket, Message
 from schemas import EvaluationResponse
+from ai import get_llm_client
 
 EVALUATOR_SYSTEM_PROMPT = """You are an senior IT Service Desk Quality Auditor. Your job is to evaluate a technical support technician's performance based on their chat history with a user and their final proposed diagnosis.
 
@@ -31,19 +32,13 @@ You must respond ONLY with a JSON object matching this structure (no markdown bo
 """
 
 def evaluate_ticket(settings: Settings, ticket: Ticket, chat_history: list[Message], proposed_diagnosis: str) -> EvaluationResponse:
-    # 1. Check if mock mode is used
-    if settings.provider == "mock" or not settings.api_key:
+    # 1. Check if mock mode is used or missing key
+    if settings.provider == "mock" or (settings.provider != "ollama" and not settings.api_key):
         return get_mock_evaluation(ticket, chat_history, proposed_diagnosis)
 
     # 2. Build LLM call
     try:
-        if settings.provider == "openai":
-            client = OpenAI(api_key=settings.api_key)
-        else: # ollama
-            client = OpenAI(
-                base_url=settings.base_url or "http://localhost:11434/v1",
-                api_key="ollama"
-            )
+        client, model_name = get_llm_client(settings)
 
         chat_transcript = ""
         for msg in chat_history:
@@ -59,7 +54,7 @@ def evaluate_ticket(settings: Settings, ticket: Ticket, chat_history: list[Messa
         user_prompt = f"Chat History:\n{chat_transcript}\n\nProposed Diagnosis by Technician:\n{proposed_diagnosis}"
 
         response = client.chat.completions.create(
-            model=settings.model,
+            model=model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -68,14 +63,23 @@ def evaluate_ticket(settings: Settings, ticket: Ticket, chat_history: list[Messa
             response_format={"type": "json_object"}
         )
 
-        result_json = json.loads(response.choices[0].message.content.strip())
+        content = response.choices[0].message.content.strip()
+        # Clean any accidental markdown codeblock fences if returned by open-source models
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.startswith("```"):
+            content = content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+
+        result_json = json.loads(content.strip())
         return EvaluationResponse(
             score=result_json.get("score", 50),
             strengths=result_json.get("strengths", ["Comunicação profissional"]),
             improvements=result_json.get("improvements", ["Investigação mais aprofundada"]),
             diagnosis_probable=result_json.get("diagnosis_probable", proposed_diagnosis),
             expected_solution=ticket.expected_solution,
-            feedback_text=result_json.get("feedback_text", "Atendimento avaliado com sucesso.")
+            feedback_text=result_json.get("feedback_text", "Avaliação concluída.")
         )
 
     except Exception as e:
