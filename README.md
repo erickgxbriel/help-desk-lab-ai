@@ -6,10 +6,11 @@ Disponível em 3 idiomas: 🇧🇷 **Português** | 🇺🇸 **English** | 🇪�
 
 ---
 
-## 📄 Documentação Completa
+## 📄 Documentação & Guias
 
-Para uma visão detalhada de todos os módulos, metodologias e funcionalidades, consulte o documento oficial:
-👉 **[APRESENTACAO_PLATAFORMA.md](./APRESENTACAO_PLATAFORMA.md)**
+- 👉 **[Apresentação Completa da Plataforma](./APRESENTACAO_PLATAFORMA.md)**: Visão geral de arquitetura, módulos e certificações.
+- 👉 **[Guia de Deploy & Próximos Passos](./PROXIMOS_PASSOS_E_DEPLOY.md)**: Passo a passo de deploy gratuito (Vercel + Render) e roadmap de melhorias.
+- 👉 **[Guia de Flashcards Anki N1](./GUIA_ESTUDO_ANKI_N1.md)**: Instruções de importação e memorização de comandos e conceitos de TI.
 
 ---
 
